@@ -28,10 +28,13 @@ RUN mkdir -p ${CERT_FOLDER} && \
 COPY	conf/nginx.conf	/etc/nginx/
 COPY	conf/server.conf	/etc/nginx/conf.d/
 
-RUN		echo "\tserver name ${COMMON_NAME};\n\
-			\tssl_certificate ${CERTIFICATE};\n\
-			\tssl_certificate_key ${KEY};\n\
-			}" >> /etc/nginx/conf.d/server.conf
+# RUN		echo "\tserver name ${COMMON_NAME};\n\
+# 			\tssl_certificate ${CERTIFICATE};\n\
+# 			\tssl_certificate_key ${KEY};\n\
+# 			}" >> /etc/nginx/conf.d/server.conf
+# RUN echo "server_name ${COMMON_NAME};\n\
+#     ssl_certificate ${CERTIFICATE};\n\
+#     ssl_certificate_key ${KEY};\n" >> /etc/nginx/conf.d/server.conf
 
 RUN		mkdir -p /var/www/
 RUN		chown -R www-data:www-data /var/www/
