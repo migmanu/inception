@@ -77,7 +77,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /home/migmanu/data/database
+      device: /home/jmigoya-/data/database
 
   # keeps the wordpress files
   wordpress_files:
@@ -85,7 +85,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /home/migmanu/data/wordpress_files
+      device: /home/jmigoya-/data/wordpress_files
 
 # networks --------------------------------------------------------------------
 

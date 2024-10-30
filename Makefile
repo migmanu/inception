@@ -1,4 +1,3 @@
-
 NAME		= inception
 SRCS		= ./srcs
 COMPOSE		= $(SRCS)/docker-compose.yml
@@ -7,11 +6,14 @@ HOST_URL	= jmigoya-.42.fr
 all: $(NAME)
 
 $(NAME): up
+	sudo
 
 # puts the url in the host files and starts the containers trough docker compose
 up: create_dir
+	@sudo mkdir -p /home/jmigoya-/data/database
+	@sudo mkdir -p /home/jmigoya-/data/wordpress_files
 	@sudo hostsed add 127.0.0.1 $(HOST_URL) > $(HIDE) && echo " $(HOST_ADD)"
-	@docker compose -p $(NAME) -f $(COMPOSE) up --build || (echo " $(FAIL)" && exit 1)
+	@sudo docker compose -p $(NAME) -f $(COMPOSE) up --build || (echo " $(FAIL)" && exit 1)
 	@echo " $(UP)"
 
 # stops the containers through docker compose
@@ -37,6 +39,7 @@ clean:
 # backups the data and removes the containers, images and the host url from the host file
 fclean: clean backup
 	@sudo rm -rf ~/data
+	@sudo rm -rf /home/jmigoya-/data/wordpress_files
 	@if [ -n "$$(docker image ls $(NAME)-nginx -q)" ]; then docker image rm -f $(NAME)-nginx > $(HIDE) && echo " $(NX_FLN)" ; fi
 	@if [ -n "$$(docker image ls $(NAME)-wordpress -q)" ]; then docker image rm -f $(NAME)-wordpress > $(HIDE) && echo " $(WP_FLN)" ; fi
 	@if [ -n "$$(docker image ls $(NAME)-mariadb -q)" ]; then docker image rm -f $(NAME)-mariadb > $(HIDE) && echo " $(DB_FLN)" ; fi
