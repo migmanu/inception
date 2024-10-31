@@ -1,98 +1,88 @@
 services:
 
-  # mariadb container ------------------------------------------------------------
-
-  # this is the only container that no depend on the others, so its the first to be created
+  # MariaDB service configuration
+  # This service handles the database operations for the application.
   mariadb:
     container_name: mariadb
     build: ./requirements/mariadb/
     volumes:
-      - database:/var/lib/mysql/
+      - database:/var/lib/mysql/  # Persist database data to avoid data loss
     networks:
-      - all
-    init: true
-    restart: on-failure
+      - all  # Connect to the 'all' network for inter-service communication
+    init: true  # Ensure proper initialization of the container
+    restart: on-failure  # Restart the container if it exits with a non-zero status
     env_file:
-      - .env
+      - .env  # Load environment variables from the .env file
 
-  # wordpress container ------------------------------------------------------------
-
-  # this is the second container to be created, it depends on the mariadb container
+  # WordPress service configuration
+  # This service runs the WordPress application, which relies on the database.
   wordpress:
     container_name: wordpress
     build: ./requirements/wordpress/
     volumes:
-      - wordpress_files:/var/www/inception/
+      - wordpress_files:/var/www/inception/  # Persist WordPress files to maintain state
     networks:
-      - all
-    init: true
-    restart: on-failure
+      - all  # Connect to the 'all' network for inter-service communication
+    init: true  # Ensure proper initialization of the container
+    restart: on-failure  # Restart the container if it exits with a non-zero status
     env_file:
-      - .env
+      - .env  # Load environment variables from the .env file
     depends_on:
-      - mariadb
+      - mariadb  # Ensure the database service is running before starting WordPress
 
-  # nginx container ------------------------------------------------------------
-
-  # this is the last container to be created, it depends on the wordpress container
-  # it use args to pass the certificate and key path to the Dockerfile
-  # in the build moment with show the private informations that where in the .env file
+  # Nginx service configuration
+  # This service acts as a web server and reverse proxy for the application.
   nginx:
     container_name: nginx
     build:
       context: ./requirements/nginx/
       args:
-        CERT_FOLDER: ${CERT_FOLDER}
-        CERTIFICATE: ${CERTIFICATE}
-        KEY: ${KEY}
-        COUNTRY: ${COUNTRY}
-        STATE: ${STATE}
-        LOCALITY: ${LOCALITY}
-        ORGANIZATION: ${ORGANIZATION}
-        UNIT: ${UNIT}
-        COMMON_NAME: ${COMMON_NAME}
+        CERT_FOLDER: ${CERT_FOLDER}  # Path to SSL certificate folder
+        CERTIFICATE: ${CERTIFICATE}  # SSL certificate file name
+        KEY: ${KEY}  # SSL key file name
+        COUNTRY: ${COUNTRY}  # Country for SSL certificate
+        STATE: ${STATE}  # State for SSL certificate
+        LOCALITY: ${LOCALITY}  # Locality for SSL certificate
+        ORGANIZATION: ${ORGANIZATION}  # Organization for SSL certificate
+        UNIT: ${UNIT}  # Organizational unit for SSL certificate
+        COMMON_NAME: ${COMMON_NAME}  # Common name for SSL certificate
     ports:
-      - '443:443'
+      - '443:443'  # Expose port 443 for HTTPS traffic
     volumes:
-      - wordpress_files:/var/www/inception/
+      - wordpress_files:/var/www/inception/  # Share WordPress files with Nginx
     networks:
-      - all
-    init: true
-    restart: on-failure
+      - all  # Connect to the 'all' network for inter-service communication
+    init: true  # Ensure proper initialization of the container
+    restart: on-failure  # Restart the container if it exits with a non-zero status
     env_file:
-      - .env
+      - .env  # Load environment variables from the .env file
     depends_on:
-      - wordpress
+      - wordpress  # Ensure the WordPress service is running before starting Nginx
 
-# volumes --------------------------------------------------------------------
-
-# keeps the data shared between the containers
-# it acts like a shared hard drive between the containers and the host machine
-# device: where the data will be stored in the host machine
+# Volume definitions
+# Volumes are used to persist data and share it between containers and the host machine.
 volumes:
 
-  # keeps the database
+  # MariaDB data volume
+  # This volume stores the database files for MariaDB.
   database:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/jmigoya-/data/database
+      device: /home/jmigoya-/data/database  # Host path for the database volume
 
-  # keeps the wordpress files
+  # WordPress files volume
+  # This volume stores the application files for WordPress.
   wordpress_files:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/jmigoya-/data/wordpress_files
+      device: /home/jmigoya-/data/wordpress_files  # Host path for the WordPress files volume
 
-# networks --------------------------------------------------------------------
-
-# this network is used to connect the containers
-# it acts like a virtual switch between the containers
-# all is the name of the network
-# bridge is the type of the network
+# Network definitions
+# Networks are used to enable communication between the containers.
 networks:
   all:
-    driver: bridge
+    driver: bridge  # Use the bridge driver to create an isolated network
