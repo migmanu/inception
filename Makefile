@@ -2,91 +2,72 @@ NAME        = inception
 SRCS        = ./srcs
 COMPOSE     = $(SRCS)/docker-compose.yml
 HOST_URL    = jmigoya-.42.fr
+DATA_DIR    = /home/jmigoya-/data
+HIDE        = /dev/null 2>&1
 
-all: $(NAME)
+all: sudo_check up
 
-$(NAME): up
-	sudo
+sudo_check:
+	@if [ "$$EUID" -ne 0 ]; then echo "Please run 'make' with sudo"; exit 1; fi
 
-up: create_dir
-	@mkdir -p ~/data/database
-	@mkdir -p ~/data/wordpress_files
-	@sudo mkdir -p /home/jmigoya-/data/database
-	@sudo mkdir -p /home/jmigoya-/data/wordpress_files
+up: restore create_dirs
 	@sudo hostsed add 127.0.0.1 $(HOST_URL) > $(HIDE) && echo " $(HOST_ADDED)"
-	@sudo docker compose -p $(NAME) -f $(COMPOSE) up --build || (echo " $(BUILD_FAILED)" && exit 1)
+	@sudo docker compose -p $(NAME) -f $(COMPOSE) up --build || (echo " $(BUILD_INTERRUPTED)" && exit 1)
 	@echo " $(CONTAINERS_STARTED)"
 
 down:
-	@docker compose -p $(NAME) down
+	@sudo docker compose -p $(NAME) down
 	@echo " $(CONTAINERS_STOPPED)"
 
-# Creates a backup of the data folder in the home directory
 backup:
 	@if [ -d ~/data ]; then sudo tar -czvf ~/data.tar.gz -C ~/ data/ > $(HIDE) && echo " $(BACKUP_CREATED)" ; fi
 
-# Stops the containers, removes the volumes and removes the containers
 clean:
-	@docker compose -f $(COMPOSE) down -v
-	@if [ -n "$$(docker ps -a --filter "name=nginx" -q)" ]; then docker rm -f nginx > $(HIDE) && echo " $(NGINX_REMOVED)" ; fi
-	@if [ -n "$$(docker ps -a --filter "name=wordpress" -q)" ]; then docker rm -f wordpress > $(HIDE) && echo " $(WORDPRESS_REMOVED)" ; fi
-	@if [ -n "$$(docker ps -a --filter "name=mariadb" -q)" ]; then docker rm -f mariadb > $(HIDE) && echo " $(MARIADB_REMOVED)" ; fi
+	@sudo docker compose -f $(COMPOSE) down -v
+	@sudo docker rm -f nginx wordpress mariadb > $(HIDE) 2>&1 || true
 
-# Backs up the data and removes the containers, images, and the host URL from the host file
-fclean: clean backup
+fclean: clean
 	@sudo rm -rf ~/data
-	@sudo rm -rf /home/jmigoya-/data/wordpress_files
-	@if [ -n "$$(docker image ls $(NAME)-nginx -q)" ]; then docker image rm -f $(NAME)-nginx > $(HIDE) && echo " $(NGINX_IMAGE_REMOVED)" ; fi
-	@if [ -n "$$(docker image ls $(NAME)-wordpress -q)" ]; then docker image rm -f $(NAME)-wordpress > $(HIDE) && echo " $(WORDPRESS_IMAGE_REMOVED)" ; fi
-	@if [ -n "$$(docker image ls $(NAME)-mariadb -q)" ]; then docker image rm -f $(NAME)-mariadb > $(HIDE) && echo " $(MARIADB_IMAGE_REMOVED)" ; fi
+	@sudo docker image rm -f $(NAME)-nginx $(NAME)-wordpress $(NAME)-mariadb > $(HIDE) 2>&1 || true
 	@sudo hostsed rm 127.0.0.1 $(HOST_URL) > $(HIDE) && echo " $(HOST_REMOVED)"
+
+remove: down fclean
+	@echo "\nPreparing to start with a clean state..."
+	@sudo docker stop $$(sudo docker ps -qa) > $(HIDE) 2>&1 || true
+	@sudo docker rm $$(sudo docker ps -qa) > $(HIDE) 2>&1 || true
+	@sudo docker rmi -f $$(sudo docker images -qa) > $(HIDE) 2>&1 || true
+	@sudo docker volume rm $$(sudo docker volume ls -q) > $(HIDE) 2>&1 || true
+	@sudo docker network rm $$(sudo docker network ls -q) > $(HIDE) 2>&1 || true
 
 status:
 	@clear
-	@echo "\nCONTAINERS\n"
-	@docker ps -a
-	@echo "\nIMAGES\n"
-	@docker image ls
-	@echo "\nVOLUMES\n"
-	@docker volume ls
-	@echo "\nNETWORKS\n"
-	@docker network ls --filter "name=$(NAME)_all"
-	@echo ""
-
-# remove all containers, images, volumes and networks to start with a clean state
-remove:
-	@echo "\nPreparing to start with a clean state..."
-	@echo "\nStopping all containers...\n"
-	@if [ -n "$$(docker ps -qa)" ]; then docker stop $$(docker ps -qa) ;	fi
-	@echo "\nRemoving all containers...\n"
-	@if [ -n "$$(docker ps -qa)" ]; then docker rm $$(docker ps -qa) ; fi
-	@echo "\nRemoving all images...\n"
-	@if [ -n "$$(docker images -qa)" ]; then docker rmi -f $$(docker images -qa) ; fi
-	@echo "\nRemoving all volumes...\n"
-	@if [ -n "$$(docker volume ls -q)" ]; then docker volume rm $$(docker volume ls -q) ; fi
-	@echo "\nRemoving all networks...\n"
-	@if [ -n "$$(docker network ls -q) " ]; then docker network rm $$(docker network ls -q) 2> /dev/null || true ; fi 
+	@echo "\n--- CONTAINERS ---\n"; sudo docker ps -a
+	@echo "\n--- IMAGES ---\n"; sudo docker image ls
+	@echo "\n--- VOLUMES ---\n"; sudo docker volume ls
+	@echo "\n--- NETWORKS ---\n"; sudo docker network ls --filter "name=$(NAME)_all"
 	@echo ""
 
 re: fclean all
 
-HIDE        = /dev/null 2>&1
+create_dirs:
+	@sudo mkdir -p ~/data/database ~/data/wordpress_files $(DATA_DIR)/database $(DATA_DIR)/wordpress_files
 
-RED         = \033[0;31m
-GREEN       = \033[0;32m
+restore:
+	@if [ -f ~/data.tar.gz ]; then sudo tar -xzvf ~/data.tar.gz -C ~/ > $(HIDE) && echo " $(BACKUP_RESTORED)" ; fi
+
+HOST_ADDED          = $(CYAN)[INFO] Host entry added successfully$(RESET)
+BUILD_INTERRUPTED   = $(YELLOW)[WARNING] Docker build interrupted$(RESET)
+CONTAINERS_STARTED  = $(GREEN)[SUCCESS] Containers started successfully$(RESET)
+CONTAINERS_STOPPED  = $(YELLOW)[INFO] Containers stopped$(RESET)
+BACKUP_CREATED      = $(GREEN)[SUCCESS] Backup created successfully$(RESET)
+BACKUP_RESTORED     = $(CYAN)[INFO] Backup restored successfully$(RESET)
+HOST_REMOVED        = $(CYAN)[INFO] Host entry removed successfully$(RESET)
+
+RED         = \033[1;31m
+GREEN       = \033[1;32m
+YELLOW      = \033[1;33m
+CYAN        = \033[1;36m
 RESET       = \033[0m
 
-HOST_ADDED          = $(GREEN)Host added$(RESET)
-BUILD_FAILED        = $(RED)Build failed$(RESET)
-CONTAINERS_STARTED  = $(GREEN)Containers started$(RESET)
-CONTAINERS_STOPPED  = $(GREEN)Containers stopped$(RESET)
-BACKUP_CREATED      = $(GREEN)Backup created$(RESET)
-NGINX_REMOVED       = $(GREEN)Nginx container removed$(RESET)
-WORDPRESS_REMOVED   = $(GREEN)WordPress container removed$(RESET)
-MARIADB_REMOVED     = $(GREEN)MariaDB container removed$(RESET)
-NGINX_IMAGE_REMOVED = $(GREEN)Nginx image removed$(RESET)
-WORDPRESS_IMAGE_REMOVED = $(GREEN)WordPress image removed$(RESET)
-MARIADB_IMAGE_REMOVED = $(GREEN)MariaDB image removed$(RESET)
-HOST_REMOVED        = $(GREEN)Host removed$(RESET)
+.PHONY: all sudo_check up down clean fclean remove status re create_dirs backup restore
 
-.PHONY: all up down create_dir clean fclean status backup prepare re
