@@ -31,5 +31,11 @@ fi;
 
 wp --allow-root --path="/var/www/inception/" theme install raft --activate
 
-exec $@
+# Configure Redis Cache
+wp config set WP_REDIS_PORT 6379 --add --type=constant --allow-root --path=/var/www/inception/
+wp config set WP_REDIS_HOST redis --add --type=constant --allow-root --path=/var/www/inception/
+wp plugin install redis-cache --activate --allow-root --path=/var/www/inception/
+wp redis enable --allow-root --path=/var/www/inception/
+
+exec php-fpm7.4 --nodaemonize
 

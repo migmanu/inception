@@ -1,88 +1,83 @@
 services:
-
-  # MariaDB service configuration
-  # This service handles the database operations for the application.
   mariadb:
     container_name: mariadb
     build: ./requirements/mariadb/
     volumes:
-      - database:/var/lib/mysql/  # Persist database data to avoid data loss
+      - database:/var/lib/mysql/
     networks:
-      - all  # Connect to the 'all' network for inter-service communication
-    init: true  # Ensure proper initialization of the container
-    restart: on-failure  # Restart the container if it exits with a non-zero status
+      - all
+    init: true
+    restart: on-failure
     env_file:
-      - .env  # Load environment variables from the .env file
+      - .env
 
-  # WordPress service configuration
-  # This service runs the WordPress application, which relies on the database.
   wordpress:
     container_name: wordpress
     build: ./requirements/wordpress/
     volumes:
-      - wordpress_files:/var/www/inception/  # Persist WordPress files to maintain state
+      - wordpress_files:/var/www/inception/
     networks:
-      - all  # Connect to the 'all' network for inter-service communication
-    init: true  # Ensure proper initialization of the container
-    restart: on-failure  # Restart the container if it exits with a non-zero status
+      - all
+    init: true
+    restart: on-failure
     env_file:
-      - .env  # Load environment variables from the .env file
+      - .env
     depends_on:
-      - mariadb  # Ensure the database service is running before starting WordPress
+      - mariadb
+      - redis
 
-  # Nginx service configuration
-  # This service acts as a web server and reverse proxy for the application.
   nginx:
     container_name: nginx
     build:
       context: ./requirements/nginx/
       args:
-        CERT_FOLDER: ${CERT_FOLDER}  # Path to SSL certificate folder
-        CERTIFICATE: ${CERTIFICATE}  # SSL certificate file name
-        KEY: ${KEY}  # SSL key file name
-        COUNTRY: ${COUNTRY}  # Country for SSL certificate
-        STATE: ${STATE}  # State for SSL certificate
-        LOCALITY: ${LOCALITY}  # Locality for SSL certificate
-        ORGANIZATION: ${ORGANIZATION}  # Organization for SSL certificate
-        UNIT: ${UNIT}  # Organizational unit for SSL certificate
-        COMMON_NAME: ${COMMON_NAME}  # Common name for SSL certificate
+        CERT_FOLDER: ${CERT_FOLDER}
+        CERTIFICATE: ${CERTIFICATE}
+        KEY: ${KEY}
+        COUNTRY: ${COUNTRY}
+        STATE: ${STATE}
+        LOCALITY: ${LOCALITY}
+        ORGANIZATION: ${ORGANIZATION}
+        UNIT: ${UNIT}
+        COMMON_NAME: ${COMMON_NAME}
     ports:
-      - '443:443'  # Expose port 443 for HTTPS traffic
+      - '443:443'
     volumes:
-      - wordpress_files:/var/www/inception/  # Share WordPress files with Nginx
+      - wordpress_files:/var/www/inception/
     networks:
-      - all  # Connect to the 'all' network for inter-service communication
-    init: true  # Ensure proper initialization of the container
-    restart: on-failure  # Restart the container if it exits with a non-zero status
+      - all
+    init: true
+    restart: on-failure
     env_file:
-      - .env  # Load environment variables from the .env file
+      - .env
     depends_on:
-      - wordpress  # Ensure the WordPress service is running before starting Nginx
+      - wordpress
 
-# Volume definitions
-# Volumes are used to persist data and share it between containers and the host machine.
+  redis:
+    container_name: redis
+    build:
+      context: ./requirements/bonus/redis-cache
+      dockerfile: Dockerfile
+    networks:
+      - all
+    init: true
+    restart: always
+
 volumes:
-
-  # MariaDB data volume
-  # This volume stores the database files for MariaDB.
   database:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/jmigoya-/data/database  # Host path for the database volume
-
-  # WordPress files volume
-  # This volume stores the application files for WordPress.
+      device: /home/jmigoya-/data/database
   wordpress_files:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/jmigoya-/data/wordpress_files  # Host path for the WordPress files volume
+      device: /home/jmigoya-/data/wordpress_files
 
-# Network definitions
-# Networks are used to enable communication between the containers.
 networks:
   all:
-    driver: bridge  # Use the bridge driver to create an isolated network
+    driver: bridge
+

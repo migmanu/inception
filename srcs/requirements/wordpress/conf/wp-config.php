@@ -57,6 +57,10 @@ define( 'SECURE_AUTH_SALT', '' );
 define( 'LOGGED_IN_SALT',   '' );
 define( 'NONCE_SALT',       '' );
 
+define( 'WP_REDIS_PORT', '6379' );
+define( 'WP_REDIS_HOST', 'redis' );
+define( 'WP_CACHE', 'true' );
+
 /**#@-*/
 
 /**
@@ -94,4 +98,3 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /** Sets up WordPress vars and included files. */
 require_once ABSPATH . 'wp-settings.php';
-
