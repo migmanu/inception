@@ -53,8 +53,8 @@ status:
 	@docker network ls --filter "name=$(NAME)_all"
 	@echo ""
 
-# Removes all containers, images, volumes, and networks to start with a clean state
-prepare:
+# remove all containers, images, volumes and networks to start with a clean state
+remove:
 	@echo "\nPreparing to start with a clean state..."
 	@echo "\nStopping all containers...\n"
 	@if [ -n "$$(docker ps -qa)" ]; then docker stop $$(docker ps -qa) ;	fi
