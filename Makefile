@@ -58,7 +58,7 @@ status:
 	@echo ""
 
 # remove all containers, images, volumes and networks to start with a clean state
-prepare:
+remove:
 	@echo "\nPreparing to start with a clean state..."
 	@echo "\nCONTAINERS STOPPED\n"
 	@if [ -n "$$(docker ps -qa)" ]; then docker stop $$(docker ps -qa) ;	fi
